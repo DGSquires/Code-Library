@@ -1,0 +1,66 @@
+import socket
+import RPi.GPIO as GPIO
+
+config {
+    'IP_ADDRESS' =
+    'IO_UNLOCK' =
+    'IO_LOCK' =
+    }
+ 
+def socket_handler():
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.bind((IP_ADDRESS, 4096))
+    sock.listen(1)
+
+    print('Socket listening on 192.168.1.64:4096')
+
+    while True:
+        connection_socket, address = sock.accept()
+
+        if connection_socket and address is not None:
+            message = connection_socket.recv(4096)
+            d_mess = message.decode('utf-8')
+
+            print('Message received: '+d_mess)
+            print('Attempting lock control')
+
+            new_state = gpio_handler(d_mess)
+
+            print('Node is locked: '+new_state)
+
+            connection_socket.send(new_state.encode())
+
+
+def gpio_setup():
+
+    GPIO.setmode(GPIO.BOARD)
+    GPIO.setup(config['IO_UNLOCK'], GPIO.OUT, initial=GPIO.HIGH)
+    GPIO.setup(config['IO_LOCK'], GPIO.OUT, initial=GPIO.LOW)
+
+
+def gpio_handler(state):
+    """
+    Sets GPIO pin to 0v on state=False or 5v state=True
+    return: unlock state as bool
+    """
+    if state == 'True':
+        GPIO.output(config['IO_UNLOCK'], GPIO.HIGH)
+        GPIO.output(config['IO_LOCK'], GPIO.LOW)
+        return 'True'
+    if state =='False':
+        GPIO.output(config['IO_UNLOCK'], GPIO.LOW)
+        GPIO.output(config['IO_UNLOCK'], GPIO.HIGH)
+        return 'False'
+
+
+# MAIN
+"""config {
+    'IP_ADDRESS' =
+    'IO_UNLOCK' =
+    'IO_LOCK' =
+    }"""
+
+gpio_setup()
+while True:
+    socket_handler():
